@@ -1,0 +1,98 @@
+k-means code
+import numpy as np
+from matplotlib import pyplot as plt
+
+
+def euclidean_distance(vecA, vecB):
+    '''计算vecA与vecB之间的欧式距离'''
+    # return np.sqrt(np.sum(np.square(vecA - vecB)))
+    return np.linalg.norm(vecA - vecB)
+
+
+def random_centroids(data, k):
+    ''' 随机创建k个中心点'''
+    dim = np.shape(data)[1]  # 获取向量的维度
+    centroids = np.mat(np.zeros((k, dim)))
+    for j in range(dim):  # 随机生成每一维中最大值和最小值之间的随机数
+        min_j = np.min(data[:, j])
+        range_j = np.max(data[:, j]) - min_j
+        centroids[:, j] = min_j * np.mat(np.ones((k, 1))) + np.random.rand(k, 1) * range_j
+    return centroids
+
+
+def KMeans(data, k, distance_func=euclidean_distance):
+    '''根据k-means算法求解聚类的中心'''
+    m = np.shape(data)[0]  # 获得行数m
+    cluster_assment = np.mat(np.zeros((m, 2)))  # 初试化一个矩阵，用来记录簇索引和存储距离平方
+    centroids = random_centroids(data, k)  # 生成初始化点
+    cluster_changed = True  # 判断是否需要重新计算聚类中心
+    while cluster_changed:
+        cluster_changed = False
+        for i in range(m):
+            distance_min = np.inf  # 设置样本与聚类中心之间的最小的距离，初始值为正无穷
+            index_min = -1  # 所属的类别
+            for j in range(k):
+                distance_ji = distance_func(centroids[j, :], data[i, :])
+                if distance_ji &distance_min:
+                    distance_min = distance_ji
+                    index_min = j
+            if cluster_assment[i, 0] != index_min:
+                cluster_changed = True
+                cluster_assment[i, :] = index_min, distance_min ** 2  # 存储距离平方
+        for cent in range(k):  # 更新质心，将每个族中的点的均值作为质心
+            pts_in_cluster = data[np.nonzero(cluster_assment[:, 0].A == cent)[0]]
+            centroids[cent, :] = np.mean(pts_in_cluster, axis=0)
+    return centroids, cluster_assment
+
+def show_cluster(data, k, centroids, cluster_assment):
+    num, dim = data.shape
+    mark = ['or', 'ob', 'og', 'oy', 'oc', 'om']
+    for i in range(num):
+        mark_index = int(cluster_assment[i, 0])
+        plt.plot(data[i, 0], data[i, 1], mark[mark_index])
+    for i in range(k):
+        plt.plot(centroids[i, 0], centroids[i, 1], 'o', markeredgecolor='k', markersize=16)
+    plt.show()
+
+
+if __name__ == "__main__":
+    data = []
+    f = open("sz.txt", 'r')
+    for line in f:
+        data.append([float(line.split(',')[0]), float(line.split(',')[1])])
+    data = np.array(data)
+    k = 4
+    centroids = random_centroids(data, k)
+    centroids, cluster_assment = KMeans(data, k)
+    show_cluster(data, k, centroids, cluster_assment)
+
+
+k-means++
+def nearest(data, cluster_centers, distance_func=euclidean_distance):
+    min_dist = np.inf
+    m = np.shape(cluster_centers)[0]  # 当前已经初始化的聚类中心的个数
+    for i in range(m):
+        d = distance_func(data, cluster_centers[i, ])  # 计算point与每个聚类中心之间的距离
+        if min_dist &gt; d:  # 选择最短距离
+            min_dist = d
+    return min_dist
+
+def get_centroids(data, k, distance_func=euclidean_distance):
+    m, n = np.shape(data)
+    cluster_centers = np.mat(np.zeros((k, n)))
+    index = np.random.randint(0, m)  # 1、随机选择一个样本点为第一个聚类中心
+    cluster_centers[0, ] = np.copy(data[index, ])
+    d = [0.0 for _ in range(m)]  # 2、初始化一个距离的序列
+    for i in range(1, k):
+        sum_all = 0
+        for j in range(m):
+            d[j] = nearest(data[j, ], cluster_centers[0:i, ], distance_func)  # 3、对每一个样本找到最近的聚类中心点
+            sum_all += d[j]  # 4、将所有的最短距离相加
+        sum_all *= random()  # 5、取得sum_all之间的随机值
+        for j, di in enumerate(d):  # 6、获得距离最远的样本点作为聚类中心点
+            sum_all -= di
+            if sum_all &gt; 0:
+                continue
+            cluster_centers[i] = np.copy(data[j, ])
+            break
+    return cluster_centers
